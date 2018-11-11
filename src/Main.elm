@@ -19,6 +19,14 @@ type alias Note =
     }
 
 
+type alias NotesResponse =
+    { data : List Note
+    , limit : Int
+    , skip : Int
+    , total : Int
+    }
+
+
 type LoadingState
     = Loaded
     | Loading
@@ -28,12 +36,14 @@ type LoadingState
 type alias Model =
     { notes : List Note
     , loadingState : LoadingState
+    , page : Int
+    , canLoadMore : Bool
     }
 
 
 type Msg
     = LoadNotes
-    | LoadNotesDone (Result Http.Error (List Note))
+    | LoadNotesDone (Result Http.Error NotesResponse)
 
 
 textDecoder : D.Decoder String
@@ -53,32 +63,41 @@ noteDecoder =
         tagsDecoder
 
 
-dataDecoder : D.Decoder (List Note)
-dataDecoder =
-    D.field "data" (D.list noteDecoder)
+notesResponseDecoder : D.Decoder NotesResponse
+notesResponseDecoder =
+    D.map4 NotesResponse
+        (D.field "data" (D.list noteDecoder))
+        (D.field "limit" D.int)
+        (D.field "skip" D.int)
+        (D.field "total" D.int)
 
 
-loadNotes : Cmd Msg
-loadNotes =
+loadNotes : Int -> Cmd Msg
+loadNotes page =
     let
+        pageSize =
+            10
+
         url =
             Url.Builder.crossOrigin
                 "https://jex-forget-me-not.herokuapp.com"
                 [ "note"
                 ]
                 [ Url.Builder.string "$sort[createdAt]" "-1"
-                , Url.Builder.string "$skip" "0"
+                , Url.Builder.string "$skip" (String.fromInt (page * pageSize))
                 ]
     in
-    Http.send LoadNotesDone (Http.get url dataDecoder)
+    Http.send LoadNotesDone (Http.get url notesResponseDecoder)
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { notes = []
       , loadingState = Loaded
+      , page = 0
+      , canLoadMore = True
       }
-    , loadNotes
+    , loadNotes 0
     )
 
 
@@ -106,20 +125,33 @@ getStringFromHttpError error =
             msg
 
 
+hasMorePagesToLoad : NotesResponse -> Bool
+hasMorePagesToLoad response =
+    let
+        { total, skip, data } =
+            response
+    in
+    total - (skip + List.length data) > 0
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         LoadNotes ->
-            ( { model | loadingState = Loading }
-            , loadNotes
+            ( { model
+                | loadingState = Loading
+                , page = model.page + 1
+              }
+            , loadNotes (model.page + 1)
             )
 
         LoadNotesDone result ->
             case result of
-                Ok notes ->
+                Ok notesResponse ->
                     ( { model
                         | loadingState = Loaded
-                        , notes = notes
+                        , notes = notesResponse.data
+                        , canLoadMore = hasMorePagesToLoad notesResponse
                       }
                     , Cmd.none
                     )
@@ -152,11 +184,29 @@ notesAsHtml notes =
         )
 
 
+canLoadMore : Model -> Bool
+canLoadMore model =
+    not
+        (model.loadingState
+            == Loading
+            || model.canLoadMore
+        )
+
+
 view : Model -> Html Msg
 view model =
     div []
         [ div []
-            [ button [ onClick LoadNotes ] [ text "LoadNotes" ]
+            [ button
+                [ onClick LoadNotes
+                , Html.Attributes.disabled (canLoadMore model)
+                ]
+                [ text
+                    ("load page "
+                        ++ String.fromInt
+                            (model.page + 1)
+                    )
+                ]
             ]
         , div []
             (case model.loadingState of
