@@ -52,25 +52,30 @@ noteDecoder =
         tagsDecoder
 
 
-decodeNote : String -> Note
-decodeNote encoded =
-    case D.decodeString noteDecoder encoded of
-        Err error ->
-            Note (D.errorToString error) []
+dataDecoder : D.Decoder (List Note)
+dataDecoder =
+    D.field "data" (D.list noteDecoder)
 
-        Ok note ->
-            note
+
+getNotesFromResponseJson : String -> List Note
+getNotesFromResponseJson encoded =
+    case D.decodeString dataDecoder encoded of
+        Err error ->
+            [ Note (D.errorToString error) [] ]
+
+        Ok value ->
+            value
 
 
 json =
-    """{"text":"a dummy note","tags":["tag1","tag2"]}"""
+    """
+    {"data":[{"text":"a dummy note","tags":["tag1","tag2"]},{"text":"a dummy note","tags":["tag1","tag2"]}]}
+    """
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { notes =
-            [ decodeNote json
-            ]
+    ( { notes = []
       , loadingState = Loaded
       }
     , Cmd.none
@@ -91,7 +96,10 @@ update msg model =
             )
 
         LoadNotesDone ->
-            ( { model | loadingState = Loaded }
+            ( { model
+                | loadingState = Loaded
+                , notes = getNotesFromResponseJson json
+              }
             , Cmd.none
             )
 
