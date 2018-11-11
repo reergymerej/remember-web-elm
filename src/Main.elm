@@ -72,22 +72,25 @@ notesResponseDecoder =
         (D.field "total" D.int)
 
 
-loadNotes : Int -> Cmd Msg
-loadNotes page =
+urlForPage : Int -> String
+urlForPage page =
     let
         pageSize =
-            10
-
-        url =
-            Url.Builder.crossOrigin
-                "https://jex-forget-me-not.herokuapp.com"
-                [ "note"
-                ]
-                [ Url.Builder.string "$sort[createdAt]" "-1"
-                , Url.Builder.string "$skip" (String.fromInt (page * pageSize))
-                ]
+            8
     in
-    Http.send LoadNotesDone (Http.get url notesResponseDecoder)
+    Url.Builder.crossOrigin
+        "https://jex-forget-me-not.herokuapp.com"
+        [ "note"
+        ]
+        [ Url.Builder.string "$sort[createdAt]" "-1"
+        , Url.Builder.string "$limit" (String.fromInt pageSize)
+        , Url.Builder.string "$skip" (String.fromInt (page * pageSize))
+        ]
+
+
+loadNotes : Int -> Cmd Msg
+loadNotes page =
+    Http.send LoadNotesDone (Http.get (urlForPage page) notesResponseDecoder)
 
 
 init : () -> ( Model, Cmd Msg )
@@ -128,10 +131,10 @@ getStringFromHttpError error =
 hasMorePagesToLoad : NotesResponse -> Bool
 hasMorePagesToLoad response =
     let
-        { total, skip, data } =
+        { total, skip, limit } =
             response
     in
-    total - (skip + List.length data) > 0
+    total > (skip + limit)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
