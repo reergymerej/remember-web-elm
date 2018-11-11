@@ -6,6 +6,7 @@ import Html.Attributes
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode as D
+import Url.Builder
 
 
 type alias Tag =
@@ -57,28 +58,19 @@ dataDecoder =
     D.field "data" (D.list noteDecoder)
 
 
-json =
-    """
-    {"data":[{"text":"a dummy note","tags":["tag1","tag2"]},{"text":"a dummy note","tags":["tag1","tag2"]}]}
-    """
-
-
 loadNotes : Cmd Msg
 loadNotes =
     let
-        -- LoadNotesDone : (Result Http.Error (List Note)) -> Msg
-        msgConstructorForResponse =
-            LoadNotesDone
-
         url =
-            "https://jex-forget-me-not.herokuapp.com/note?$sort[createdAt]=-1&$skip=0"
-
-        -- get : String -> Decoder a -> Request a
-        request =
-            Http.get url dataDecoder
+            Url.Builder.crossOrigin
+                "https://jex-forget-me-not.herokuapp.com"
+                [ "note"
+                ]
+                [ Url.Builder.string "$sort[createdAt]" "-1"
+                , Url.Builder.string "$skip" "0"
+                ]
     in
-    -- send : (Result Error a -> msg) -> Request a -> Cmd msg
-    Http.send msgConstructorForResponse request
+    Http.send LoadNotesDone (Http.get url dataDecoder)
 
 
 init : () -> ( Model, Cmd Msg )
