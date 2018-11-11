@@ -1,7 +1,7 @@
 module Main exposing (Model, init, main, update, view)
 
 import Browser
-import Html exposing (Html, button, div, text)
+import Html exposing (Html, button, div, pre, text)
 import Html.Attributes
 import Html.Events exposing (onClick)
 import Http
@@ -217,22 +217,34 @@ buttonsHtml model =
         ]
 
 
+loadedView : List Note -> Html Msg
+loadedView notes =
+    div [] [ notesAsHtml notes ]
+
+
+loadingView : Html Msg
+loadingView =
+    div [] [ text "loading..." ]
+
+
+loadFailedView : String -> Html Msg
+loadFailedView error =
+    pre [] [ text error ]
+
+
 view : Model -> Html Msg
 view model =
     div []
         [ buttonsHtml model
-        , div []
-            (case model.loadingState of
-                Loaded ->
-                    [ notesAsHtml model.notes
-                    ]
+        , case model.loadingState of
+            Failed error ->
+                loadFailedView error
 
-                Loading ->
-                    [ text "loading..." ]
+            Loading ->
+                loadingView
 
-                Failed error ->
-                    [ text error ]
-            )
+            Loaded ->
+                loadedView model.notes
         ]
 
 
