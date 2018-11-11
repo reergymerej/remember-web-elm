@@ -21,7 +21,7 @@ type alias Note =
 type LoadingState
     = Loaded
     | Loading
-    | Failed
+    | Failed String
 
 
 type alias Model =
@@ -95,6 +95,25 @@ subscriptions _ =
     Sub.none
 
 
+getStringFromHttpError : Http.Error -> String
+getStringFromHttpError error =
+    case error of
+        Http.BadUrl msg ->
+            msg
+
+        Http.Timeout ->
+            "timeout"
+
+        Http.NetworkError ->
+            "network error"
+
+        Http.BadStatus _ ->
+            "bad status"
+
+        Http.BadPayload msg _ ->
+            msg
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -114,7 +133,13 @@ update msg model =
                     )
 
                 Err error ->
-                    ( { model | loadingState = Failed }
+                    ( { model
+                        | loadingState =
+                            Failed
+                                (getStringFromHttpError
+                                    error
+                                )
+                      }
                     , Cmd.none
                     )
 
@@ -150,8 +175,8 @@ view model =
                 Loading ->
                     [ text "loading..." ]
 
-                Failed ->
-                    [ text "failed" ]
+                Failed error ->
+                    [ text error ]
             )
         ]
 
