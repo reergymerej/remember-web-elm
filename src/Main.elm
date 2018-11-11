@@ -4,6 +4,7 @@ import Browser
 import Html exposing (Html, button, div, text)
 import Html.Attributes
 import Html.Events exposing (onClick)
+import Json.Decode as D
 
 
 type alias Tag =
@@ -34,19 +35,43 @@ type Msg
     | LoadNotesFailed
 
 
-getDummyNote : String -> Note
-getDummyNote text =
-    Note text []
+textDecoder : D.Decoder String
+textDecoder =
+    D.field "text" D.string
+
+
+tagsDecoder : D.Decoder (List String)
+tagsDecoder =
+    D.field "tags" (D.list D.string)
+
+
+noteDecoder : D.Decoder Note
+noteDecoder =
+    D.map2 Note
+        textDecoder
+        tagsDecoder
+
+
+decodeNote : String -> Note
+decodeNote encoded =
+    case D.decodeString noteDecoder encoded of
+        Err error ->
+            Note (D.errorToString error) []
+
+        Ok note ->
+            note
+
+
+json =
+    """{"text":"a dummy note","tags":["tag1","tag2"]}"""
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { notes =
-            [ getDummyNote "a"
-            , getDummyNote "b"
-            , getDummyNote "c"
+            [ decodeNote json
             ]
-      , loadingState = Loading
+      , loadingState = Loaded
       }
     , Cmd.none
     )
