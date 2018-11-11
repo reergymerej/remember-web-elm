@@ -42,7 +42,7 @@ type alias Model =
 
 
 type Msg
-    = LoadNotes
+    = LoadNotes Int
     | LoadNotesDone (Result Http.Error NotesResponse)
 
 
@@ -140,12 +140,12 @@ hasMorePagesToLoad response =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        LoadNotes ->
+        LoadNotes page ->
             ( { model
                 | loadingState = Loading
-                , page = model.page + 1
+                , page = page
               }
-            , loadNotes (model.page + 1)
+            , loadNotes page
             )
 
         LoadNotesDone result ->
@@ -196,21 +196,31 @@ canLoadMore model =
         )
 
 
+loadPageButtonText : Int -> Html Msg
+loadPageButtonText page =
+    text ("load page " ++ String.fromInt page)
+
+
+buttonsHtml : Model -> Html Msg
+buttonsHtml model =
+    div []
+        [ button
+            [ onClick (LoadNotes (model.page - 1))
+            , Html.Attributes.disabled (model.page == 0)
+            ]
+            [ loadPageButtonText (model.page - 1) ]
+        , button
+            [ onClick (LoadNotes (model.page + 1))
+            , Html.Attributes.disabled (canLoadMore model)
+            ]
+            [ loadPageButtonText (model.page + 1) ]
+        ]
+
+
 view : Model -> Html Msg
 view model =
     div []
-        [ div []
-            [ button
-                [ onClick LoadNotes
-                , Html.Attributes.disabled (canLoadMore model)
-                ]
-                [ text
-                    ("load page "
-                        ++ String.fromInt
-                            (model.page + 1)
-                    )
-                ]
-            ]
+        [ buttonsHtml model
         , div []
             (case model.loadingState of
                 Loaded ->
