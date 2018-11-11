@@ -16,13 +16,22 @@ type alias Note =
     }
 
 
+type LoadingState
+    = Loaded
+    | Loading
+    | Failed
+
+
 type alias Model =
     { notes : List Note
+    , loadingState : LoadingState
     }
 
 
 type Msg
-    = Hello
+    = LoadNotes
+    | LoadNotesDone
+    | LoadNotesFailed
 
 
 getDummyNote : String -> Note
@@ -37,6 +46,7 @@ init _ =
             , getDummyNote "b"
             , getDummyNote "c"
             ]
+      , loadingState = Loading
       }
     , Cmd.none
     )
@@ -48,10 +58,22 @@ subscriptions _ =
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update _ model =
-    ( model
-    , Cmd.none
-    )
+update msg model =
+    case msg of
+        LoadNotes ->
+            ( { model | loadingState = Loading }
+            , Cmd.none
+            )
+
+        LoadNotesDone ->
+            ( { model | loadingState = Loaded }
+            , Cmd.none
+            )
+
+        LoadNotesFailed ->
+            ( { model | loadingState = Failed }
+            , Cmd.none
+            )
 
 
 noteAsHtml : Note -> Html Msg
@@ -73,7 +95,23 @@ notesAsHtml notes =
 view : Model -> Html Msg
 view model =
     div []
-        [ notesAsHtml model.notes
+        [ div []
+            [ button [ onClick LoadNotes ] [ text "LoadNotes" ]
+            , button [ onClick LoadNotesDone ] [ text "LoadNotesDone" ]
+            , button [ onClick LoadNotesFailed ] [ text "LoadNotesFailed" ]
+            ]
+        , div []
+            (case model.loadingState of
+                Loaded ->
+                    [ notesAsHtml model.notes
+                    ]
+
+                Loading ->
+                    [ text "loading..." ]
+
+                Failed ->
+                    [ text "failed" ]
+            )
         ]
 
 
