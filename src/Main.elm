@@ -1,7 +1,7 @@
 module Main exposing (Model, init, main, update, view)
 
 import Browser
-import Html exposing (Html, button, div, pre, text)
+import Html exposing (Html, button, div, li, pre, text, ul)
 import Html.Attributes
 import Html.Events exposing (onClick)
 import Http
@@ -171,20 +171,19 @@ update msg model =
                     )
 
 
+tagAsHtml : Tag -> Html Msg
+tagAsHtml tag =
+    li [] [ text tag ]
+
+
 noteAsHtml : Note -> Html Msg
 noteAsHtml note =
     div []
-        [ text note.text
+        [ div []
+            [ text note.text
+            ]
+        , ul [] (List.map tagAsHtml note.tags)
         ]
-
-
-notesAsHtml : List Note -> Html Msg
-notesAsHtml notes =
-    div []
-        (List.map
-            noteAsHtml
-            notes
-        )
 
 
 canLoadMore : Model -> Bool
@@ -219,7 +218,11 @@ buttonsHtml model =
 
 loadedView : List Note -> Html Msg
 loadedView notes =
-    div [] [ notesAsHtml notes ]
+    div []
+        (List.map
+            noteAsHtml
+            notes
+        )
 
 
 loadingView : Html Msg
