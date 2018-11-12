@@ -138,9 +138,37 @@ hasMorePagesToLoad response =
     total > (skip + limit)
 
 
+maxPageSize =
+    50
+
+
+minPageSize =
+    1
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        SetPageSize size ->
+            case size of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just pageSize ->
+                    ( { model
+                        | pageSize =
+                            if pageSize > maxPageSize then
+                                maxPageSize
+
+                            else if pageSize < minPageSize then
+                                minPageSize
+
+                            else
+                                pageSize
+                      }
+                    , loadNotes model.page pageSize
+                    )
+
         LoadNotes page ->
             ( { model
                 | loadingState = Loading
@@ -169,16 +197,6 @@ update msg model =
                                     error
                                 )
                       }
-                    , Cmd.none
-                    )
-
-        SetPageSize size ->
-            case size of
-                Nothing ->
-                    ( model, Cmd.none )
-
-                Just pageSize ->
-                    ( { model | pageSize = pageSize }
                     , Cmd.none
                     )
 
@@ -228,8 +246,8 @@ pagingView model =
             [ Html.Attributes.placeholder "page size"
             , Html.Attributes.type_ "number"
             , Html.Attributes.value (String.fromInt model.pageSize)
-            , Html.Attributes.min "1"
-            , Html.Attributes.max "100"
+            , Html.Attributes.min (String.fromInt minPageSize)
+            , Html.Attributes.max (String.fromInt maxPageSize)
             , Html.Attributes.step "10"
             , onInput (\value -> SetPageSize (String.toInt value))
             ]
