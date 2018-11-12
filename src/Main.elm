@@ -82,21 +82,40 @@ notesResponseDecoder =
         (D.field "total" D.int)
 
 
-urlForPage : Int -> Int -> String
-urlForPage page pageSize =
+filterQueryList : Filter -> List Url.Builder.QueryParameter
+filterQueryList filter =
+    -- For some crazy reason, the service needs 2 $in to work.
+    if List.length filter == 0 then
+        []
+    else
+        [ Url.Builder.string "tags[$in]" "" ]
+            ++ List.map (\value -> Url.Builder.string "tags[$in]" value) filter
+
+
+urlForNotes : Int -> Int -> Filter -> String
+urlForNotes page pageSize filter =
+    let
+        basicParams =
+            [ Url.Builder.string "$sort[createdAt]" "-1"
+            , Url.Builder.string "$limit" (String.fromInt pageSize)
+            , Url.Builder.string "$skip" (String.fromInt (page * pageSize))
+            ]
+
+        filterParams =
+            filterQueryList filter
+    in
     Url.Builder.crossOrigin
         "https://jex-forget-me-not.herokuapp.com"
         [ "note"
         ]
-        [ Url.Builder.string "$sort[createdAt]" "-1"
-        , Url.Builder.string "$limit" (String.fromInt pageSize)
-        , Url.Builder.string "$skip" (String.fromInt (page * pageSize))
-        ]
+        (basicParams
+            ++ filterParams
+        )
 
 
-loadNotes : Int -> Int -> Cmd Msg
-loadNotes page pageSize =
-    Http.send LoadNotesDone (Http.get (urlForPage page pageSize) notesResponseDecoder)
+loadNotes : Int -> Int -> Filter -> Cmd Msg
+loadNotes page pageSize filter =
+    Http.send LoadNotesDone (Http.get (urlForNotes page pageSize filter) notesResponseDecoder)
 
 
 init : () -> ( Model, Cmd Msg )
@@ -109,7 +128,7 @@ init _ =
       , canLoadMore = True
       , filter = []
       }
-    , loadNotes 0 8
+    , loadNotes 0 8 []
     )
 
 
@@ -210,7 +229,7 @@ update msg model =
                         | pageSize = nextPageSize
                         , page = nextPage
                       }
-                    , loadNotes nextPage nextPageSize
+                    , loadNotes nextPage nextPageSize model.filter
                     )
 
         LoadNotes page ->
@@ -218,7 +237,7 @@ update msg model =
                 | loadingState = Loading
                 , page = page
               }
-            , loadNotes page model.pageSize
+            , loadNotes page model.pageSize model.filter
             )
 
         LoadNotesDone result ->
@@ -245,17 +264,25 @@ update msg model =
                     )
 
         AddFilter tag ->
+            let
+                nextFilter =
+                    addToListIfMissing tag model.filter
+            in
             ( { model
-                | filter = addToListIfMissing tag model.filter
+                | filter = nextFilter
               }
-            , Cmd.none
+            , loadNotes model.page model.pageSize nextFilter
             )
 
         RemoveFilter tag ->
+            let
+                nextFilter =
+                    List.filter (notValue tag) model.filter
+            in
             ( { model
-                | filter = List.filter (notValue tag) model.filter
+                | filter = nextFilter
               }
-            , Cmd.none
+            , loadNotes model.page model.pageSize nextFilter
             )
 
 
