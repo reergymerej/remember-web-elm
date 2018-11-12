@@ -1,9 +1,9 @@
 module Main exposing (Model, init, main, update, view)
 
 import Browser
-import Html exposing (Html, button, div, li, pre, text, ul)
+import Html exposing (Html, button, div, input, li, pre, text, ul)
 import Html.Attributes
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as D
 import Url.Builder
@@ -37,6 +37,8 @@ type alias Model =
     { notes : List Note
     , loadingState : LoadingState
     , page : Int
+    , pageSize : Int
+    , lastPage : Int
     , canLoadMore : Bool
     }
 
@@ -44,6 +46,7 @@ type alias Model =
 type Msg
     = LoadNotes Int
     | LoadNotesDone (Result Http.Error NotesResponse)
+    | SetPageSize (Maybe Int)
 
 
 textDecoder : D.Decoder String
@@ -72,12 +75,8 @@ notesResponseDecoder =
         (D.field "total" D.int)
 
 
-urlForPage : Int -> String
-urlForPage page =
-    let
-        pageSize =
-            8
-    in
+urlForPage : Int -> Int -> String
+urlForPage page pageSize =
     Url.Builder.crossOrigin
         "https://jex-forget-me-not.herokuapp.com"
         [ "note"
@@ -88,9 +87,9 @@ urlForPage page =
         ]
 
 
-loadNotes : Int -> Cmd Msg
-loadNotes page =
-    Http.send LoadNotesDone (Http.get (urlForPage page) notesResponseDecoder)
+loadNotes : Int -> Int -> Cmd Msg
+loadNotes page pageSize =
+    Http.send LoadNotesDone (Http.get (urlForPage page pageSize) notesResponseDecoder)
 
 
 init : () -> ( Model, Cmd Msg )
@@ -98,9 +97,11 @@ init _ =
     ( { notes = []
       , loadingState = Loaded
       , page = 0
+      , pageSize = 8
+      , lastPage = 0
       , canLoadMore = True
       }
-    , loadNotes 0
+    , loadNotes 0 8
     )
 
 
@@ -145,7 +146,7 @@ update msg model =
                 | loadingState = Loading
                 , page = page
               }
-            , loadNotes page
+            , loadNotes page model.pageSize
             )
 
         LoadNotesDone result ->
@@ -155,6 +156,7 @@ update msg model =
                         | loadingState = Loaded
                         , notes = notesResponse.data
                         , canLoadMore = hasMorePagesToLoad notesResponse
+                        , lastPage = notesResponse.total // model.pageSize
                       }
                     , Cmd.none
                     )
@@ -170,6 +172,16 @@ update msg model =
                     , Cmd.none
                     )
 
+        SetPageSize size ->
+            case size of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just pageSize ->
+                    ( { model | pageSize = pageSize }
+                    , Cmd.none
+                    )
+
 
 tagAsHtml : Tag -> Html Msg
 tagAsHtml tag =
@@ -180,8 +192,7 @@ noteAsHtml : Note -> Html Msg
 noteAsHtml note =
     div []
         [ div []
-            [ text note.text
-            ]
+            [ text note.text ]
         , ul [] (List.map tagAsHtml note.tags)
         ]
 
@@ -200,19 +211,39 @@ loadPageButtonText page =
     text ("load page " ++ String.fromInt page)
 
 
-buttonsHtml : Model -> Html Msg
-buttonsHtml model =
+pagingView : Model -> Html Msg
+pagingView model =
     div []
         [ button
-            [ onClick (LoadNotes (model.page - 1))
+            [ onClick (LoadNotes 0)
             , Html.Attributes.disabled (model.page == 0)
             ]
+            [ loadPageButtonText 0 ]
+        , button
+            [ onClick (LoadNotes (model.page - 1))
+            , Html.Attributes.disabled (model.page < 2)
+            ]
             [ loadPageButtonText (model.page - 1) ]
+        , input
+            [ Html.Attributes.placeholder "page size"
+            , Html.Attributes.type_ "number"
+            , Html.Attributes.value (String.fromInt model.pageSize)
+            , Html.Attributes.min "1"
+            , Html.Attributes.max "100"
+            , Html.Attributes.step "10"
+            , onInput (\value -> SetPageSize (String.toInt value))
+            ]
+            []
         , button
             [ onClick (LoadNotes (model.page + 1))
-            , Html.Attributes.disabled (canLoadMore model)
+            , Html.Attributes.disabled (canLoadMore model && model.page >= model.lastPage - 1)
             ]
             [ loadPageButtonText (model.page + 1) ]
+        , button
+            [ onClick (LoadNotes model.lastPage)
+            , Html.Attributes.disabled (model.page == model.lastPage)
+            ]
+            [ loadPageButtonText model.lastPage ]
         ]
 
 
@@ -238,7 +269,7 @@ loadFailedView error =
 view : Model -> Html Msg
 view model =
     div []
-        [ buttonsHtml model
+        [ pagingView model
         , case model.loadingState of
             Failed error ->
                 loadFailedView error
