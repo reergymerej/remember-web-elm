@@ -13,6 +13,10 @@ type alias Tag =
     String
 
 
+type alias Filter =
+    List Tag
+
+
 type alias Note =
     { text : String
     , tags : List Tag
@@ -40,6 +44,7 @@ type alias Model =
     , pageSize : Int
     , lastPage : Int
     , canLoadMore : Bool
+    , filter : Filter
     }
 
 
@@ -47,6 +52,7 @@ type Msg
     = LoadNotes Int
     | LoadNotesDone (Result Http.Error NotesResponse)
     | SetPageSize (Maybe Int)
+    | AddFilter Tag
 
 
 textDecoder : D.Decoder String
@@ -97,9 +103,10 @@ init _ =
     ( { notes = []
       , loadingState = Loaded
       , page = 0
-      , pageSize = 8
+      , pageSize = 13
       , lastPage = 0
       , canLoadMore = True
+      , filter = []
       }
     , loadNotes 0 8
     )
@@ -166,6 +173,14 @@ pagedLocation pageSize targetIndex =
     targetIndex // pageSize
 
 
+addToListIfMissing : a -> List a -> List a
+addToListIfMissing a list =
+    if List.member a list then
+        list
+    else
+        list ++ [ a ]
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -223,10 +238,17 @@ update msg model =
                     , Cmd.none
                     )
 
+        AddFilter tag ->
+            ( { model
+                | filter = addToListIfMissing tag model.filter
+              }
+            , Cmd.none
+            )
+
 
 tagAsHtml : Tag -> Html Msg
 tagAsHtml tag =
-    li [] [ text tag ]
+    li [ onClick (AddFilter tag) ] [ text tag ]
 
 
 noteAsHtml : Note -> Html Msg
@@ -271,7 +293,7 @@ pagingView model =
             , Html.Attributes.value (String.fromInt model.pageSize)
             , Html.Attributes.min (String.fromInt minPageSize)
             , Html.Attributes.max (String.fromInt maxPageSize)
-            , Html.Attributes.step "10"
+            , Html.Attributes.step "1"
             , onInput (\value -> SetPageSize (String.toInt value))
             ]
             []
@@ -288,8 +310,8 @@ pagingView model =
         ]
 
 
-loadedView : List Note -> Html Msg
-loadedView notes =
+viewLoaded : List Note -> Html Msg
+viewLoaded notes =
     div []
         (List.map
             noteAsHtml
@@ -307,10 +329,19 @@ loadFailedView error =
     pre [] [ text error ]
 
 
+viewFilter : Filter -> Html Msg
+viewFilter filter =
+    div []
+        [ div [] [ text "Filter" ]
+        , ul [] (List.map tagAsHtml filter)
+        ]
+
+
 view : Model -> Html Msg
 view model =
     div []
-        [ pagingView model
+        [ viewFilter model.filter
+        , pagingView model
         , case model.loadingState of
             Failed error ->
                 loadFailedView error
@@ -319,7 +350,7 @@ view model =
                 loadingView
 
             Loaded ->
-                loadedView model.notes
+                viewLoaded model.notes
         ]
 
 
