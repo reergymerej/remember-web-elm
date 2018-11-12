@@ -150,10 +150,8 @@ constrainInt : Int -> Int -> Int -> Int
 constrainInt min max value =
     if value > max then
         max
-
     else if value < min then
         min
-
     else
         value
 
@@ -161,6 +159,11 @@ constrainInt min max value =
 validPageSize : Int -> Int
 validPageSize pageSize =
     constrainInt minPageSize maxPageSize pageSize
+
+
+pagedLocation : Int -> Int -> Int
+pagedLocation pageSize targetIndex =
+    targetIndex // pageSize
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -172,10 +175,21 @@ update msg model =
                     ( model, Cmd.none )
 
                 Just pageSize ->
+                    let
+                        nextPageSize =
+                            validPageSize pageSize
+
+                        indexOfFirstRecord =
+                            model.pageSize * model.page
+
+                        nextPage =
+                            pagedLocation nextPageSize indexOfFirstRecord
+                    in
                     ( { model
-                        | pageSize = validPageSize pageSize
+                        | pageSize = nextPageSize
+                        , page = nextPage
                       }
-                    , loadNotes model.page pageSize
+                    , loadNotes nextPage nextPageSize
                     )
 
         LoadNotes page ->
@@ -193,7 +207,7 @@ update msg model =
                         | loadingState = Loaded
                         , notes = notesResponse.data
                         , canLoadMore = hasMorePagesToLoad notesResponse
-                        , lastPage = notesResponse.total // model.pageSize
+                        , lastPage = pagedLocation model.pageSize notesResponse.total
                       }
                     , Cmd.none
                     )
