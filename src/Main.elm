@@ -146,6 +146,23 @@ minPageSize =
     1
 
 
+constrainInt : Int -> Int -> Int -> Int
+constrainInt min max value =
+    if value > max then
+        max
+
+    else if value < min then
+        min
+
+    else
+        value
+
+
+validPageSize : Int -> Int
+validPageSize pageSize =
+    constrainInt minPageSize maxPageSize pageSize
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -156,15 +173,7 @@ update msg model =
 
                 Just pageSize ->
                     ( { model
-                        | pageSize =
-                            if pageSize > maxPageSize then
-                                maxPageSize
-
-                            else if pageSize < minPageSize then
-                                minPageSize
-
-                            else
-                                pageSize
+                        | pageSize = validPageSize pageSize
                       }
                     , loadNotes model.page pageSize
                     )
