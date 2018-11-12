@@ -271,6 +271,7 @@ update msg model =
             ( { model
                 | filter = nextFilter
               }
+              -- TODO: Only load if the filter changed.
             , loadNotes model.page model.pageSize nextFilter
             )
 
@@ -282,6 +283,7 @@ update msg model =
             ( { model
                 | filter = nextFilter
               }
+              -- TODO: Only load if the filter changed.
             , loadNotes model.page model.pageSize nextFilter
             )
 
