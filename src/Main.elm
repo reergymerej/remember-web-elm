@@ -53,6 +53,7 @@ type Msg
     | LoadNotesDone (Result Http.Error NotesResponse)
     | SetPageSize (Maybe Int)
     | AddFilter Tag
+    | RemoveFilter Tag
 
 
 textDecoder : D.Decoder String
@@ -181,6 +182,11 @@ addToListIfMissing a list =
         list ++ [ a ]
 
 
+notValue : a -> a -> Bool
+notValue left right =
+    left /= right
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -245,10 +251,27 @@ update msg model =
             , Cmd.none
             )
 
+        RemoveFilter tag ->
+            ( { model
+                | filter = List.filter (notValue tag) model.filter
+              }
+            , Cmd.none
+            )
 
-tagAsHtml : Tag -> Html Msg
-tagAsHtml tag =
-    li [ onClick (AddFilter tag) ] [ text tag ]
+
+clickableTag : Msg -> Tag -> Html Msg
+clickableTag msg tag =
+    li [ onClick msg ] [ text tag ]
+
+
+addableTag : Tag -> Html Msg
+addableTag tag =
+    clickableTag (AddFilter tag) tag
+
+
+removeableTag : Tag -> Html Msg
+removeableTag tag =
+    clickableTag (RemoveFilter tag) tag
 
 
 noteAsHtml : Note -> Html Msg
@@ -256,7 +279,7 @@ noteAsHtml note =
     div []
         [ div []
             [ text note.text ]
-        , ul [] (List.map tagAsHtml note.tags)
+        , ul [] (List.map addableTag note.tags)
         ]
 
 
@@ -333,7 +356,7 @@ viewFilter : Filter -> Html Msg
 viewFilter filter =
     div []
         [ div [] [ text "Filter" ]
-        , ul [] (List.map tagAsHtml filter)
+        , ul [] (List.map removeableTag filter)
         ]
 
 
