@@ -207,7 +207,7 @@ update msg model =
                         | loadingState = Loaded
                         , notes = notesResponse.data
                         , canLoadMore = hasMorePagesToLoad notesResponse
-                        , lastPage = pagedLocation model.pageSize notesResponse.total
+                        , lastPage = pagedLocation model.pageSize (notesResponse.total - 1)
                       }
                     , Cmd.none
                     )
