@@ -43,7 +43,6 @@ type alias Model =
     , page : Int
     , pageSize : Int
     , lastPage : Int
-    , canLoadMore : Bool
     , filter : Filter
     }
 
@@ -126,7 +125,6 @@ init _ =
       , page = 0
       , pageSize = 13
       , lastPage = 0
-      , canLoadMore = True
       , filter = []
       }
     , loadNotes 0 8 []
@@ -250,7 +248,6 @@ update msg model =
                     ( { model
                         | loadingState = Loaded
                         , notes = notesResponse.data
-                        , canLoadMore = hasMorePagesToLoad notesResponse
                         , lastPage = pagedLocation model.pageSize (notesResponse.total - 1)
                       }
                     , Cmd.none
@@ -316,23 +313,9 @@ noteAsHtml note =
         ]
 
 
-canLoadMore : Model -> Bool
-canLoadMore model =
-    not
-        (model.loadingState
-            == Loading
-            || model.canLoadMore
-        )
-
-
 loadPageButtonText : Int -> Html Msg
 loadPageButtonText page =
     text ("load page " ++ String.fromInt page)
-
-
-isFirstPage : Model -> Bool
-isFirstPage model =
-    model.page == 0
 
 
 pagingView : Model -> Html Msg
@@ -343,7 +326,7 @@ pagingView model =
 
         disableFirst =
             disabled
-                || isFirstPage model
+                || (model.page == 0)
 
         disablePrevious =
             disabled
@@ -351,7 +334,7 @@ pagingView model =
 
         disableNext =
             disabled
-                || (canLoadMore model && model.page >= model.lastPage - 1)
+                || (model.page >= model.lastPage - 1)
 
         disableLast =
             disabled
