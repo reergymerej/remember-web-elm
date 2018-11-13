@@ -87,6 +87,7 @@ filterQueryList filter =
     -- For some crazy reason, the service needs 2 $in to work.
     if List.length filter == 0 then
         []
+
     else
         [ Url.Builder.string "tags[$in]" "" ]
             ++ List.map (\value -> Url.Builder.string "tags[$in]" value) filter
@@ -177,8 +178,10 @@ constrainInt : Int -> Int -> Int -> Int
 constrainInt min max value =
     if value > max then
         max
+
     else if value < min then
         min
+
     else
         value
 
@@ -197,6 +200,7 @@ addToListIfMissing : a -> List a -> List a
 addToListIfMissing a list =
     if List.member a list then
         list
+
     else
         list ++ [ a ]
 
@@ -326,17 +330,42 @@ loadPageButtonText page =
     text ("load page " ++ String.fromInt page)
 
 
+isFirstPage : Model -> Bool
+isFirstPage model =
+    model.page == 0
+
+
 pagingView : Model -> Html Msg
 pagingView model =
+    let
+        disabled =
+            model.loadingState == Loading
+
+        disableFirst =
+            disabled
+                || isFirstPage model
+
+        disablePrevious =
+            disabled
+                || (model.page < 2)
+
+        disableNext =
+            disabled
+                || (canLoadMore model && model.page >= model.lastPage - 1)
+
+        disableLast =
+            disabled
+                || (model.page == model.lastPage)
+    in
     div []
         [ button
             [ onClick (LoadNotes 0)
-            , Html.Attributes.disabled (model.page == 0)
+            , Html.Attributes.disabled disableFirst
             ]
             [ loadPageButtonText 0 ]
         , button
             [ onClick (LoadNotes (model.page - 1))
-            , Html.Attributes.disabled (model.page < 2)
+            , Html.Attributes.disabled disablePrevious
             ]
             [ loadPageButtonText (model.page - 1) ]
         , input
@@ -347,16 +376,17 @@ pagingView model =
             , Html.Attributes.max (String.fromInt maxPageSize)
             , Html.Attributes.step "1"
             , onInput (\value -> SetPageSize (String.toInt value))
+            , Html.Attributes.disabled disabled
             ]
             []
         , button
             [ onClick (LoadNotes (model.page + 1))
-            , Html.Attributes.disabled (canLoadMore model && model.page >= model.lastPage - 1)
+            , Html.Attributes.disabled disableNext
             ]
             [ loadPageButtonText (model.page + 1) ]
         , button
             [ onClick (LoadNotes model.lastPage)
-            , Html.Attributes.disabled (model.page == model.lastPage)
+            , Html.Attributes.disabled disableLast
             ]
             [ loadPageButtonText model.lastPage ]
         ]
