@@ -318,39 +318,53 @@ loadPageButtonText page =
     text ("load page " ++ String.fromInt page)
 
 
+type alias PageViewStates =
+    { first : Bool
+    , prev : Bool
+    , size : Bool
+    , next : Bool
+    , last : Bool
+    }
+
+
+pageViewStates : Bool -> Int -> Int -> PageViewStates
+pageViewStates disabled page lastPage =
+    { first =
+        disabled
+            || (page == 0)
+    , prev =
+        disabled
+            || (page < 2)
+    , size = disabled
+    , next =
+        disabled
+            || (page >= lastPage - 1)
+    , last =
+        disabled
+            || (page == lastPage)
+    }
+
+
 pagingView : Model -> Html Msg
 pagingView model =
     let
-        disabled =
-            model.loadingState == Loading
+        { page, lastPage } =
+            model
 
-        disableFirst =
-            disabled
-                || (model.page == 0)
-
-        disablePrevious =
-            disabled
-                || (model.page < 2)
-
-        disableNext =
-            disabled
-                || (model.page >= model.lastPage - 1)
-
-        disableLast =
-            disabled
-                || (model.page == model.lastPage)
+        states =
+            pageViewStates (model.loadingState == Loading) page lastPage
     in
     div []
         [ button
             [ onClick (LoadNotes 0)
-            , Html.Attributes.disabled disableFirst
+            , Html.Attributes.disabled states.first
             ]
             [ loadPageButtonText 0 ]
         , button
-            [ onClick (LoadNotes (model.page - 1))
-            , Html.Attributes.disabled disablePrevious
+            [ onClick (LoadNotes (page - 1))
+            , Html.Attributes.disabled states.prev
             ]
-            [ loadPageButtonText (model.page - 1) ]
+            [ loadPageButtonText (page - 1) ]
         , input
             [ Html.Attributes.placeholder "page size"
             , Html.Attributes.type_ "number"
@@ -359,19 +373,19 @@ pagingView model =
             , Html.Attributes.max (String.fromInt maxPageSize)
             , Html.Attributes.step "1"
             , onInput (\value -> SetPageSize (String.toInt value))
-            , Html.Attributes.disabled disabled
+            , Html.Attributes.disabled states.size
             ]
             []
         , button
-            [ onClick (LoadNotes (model.page + 1))
-            , Html.Attributes.disabled disableNext
+            [ onClick (LoadNotes (page + 1))
+            , Html.Attributes.disabled states.next
             ]
-            [ loadPageButtonText (model.page + 1) ]
+            [ loadPageButtonText (page + 1) ]
         , button
-            [ onClick (LoadNotes model.lastPage)
-            , Html.Attributes.disabled disableLast
+            [ onClick (LoadNotes lastPage)
+            , Html.Attributes.disabled states.last
             ]
-            [ loadPageButtonText model.lastPage ]
+            [ loadPageButtonText lastPage ]
         ]
 
 
