@@ -208,6 +208,35 @@ notValue left right =
     left /= right
 
 
+commandAfterFilterChange : Filter -> Filter -> Int -> Cmd Msg
+commandAfterFilterChange nextFilter filter pageSize =
+    if filter == nextFilter then
+        Cmd.none
+
+    else
+        loadNotes 0 pageSize nextFilter
+
+
+commandAfterFilter : Filter -> Model -> Cmd Msg
+commandAfterFilter filter model =
+    commandAfterFilterChange filter model.filter model.pageSize
+
+
+modelAfterFilter : Filter -> Model -> Model
+modelAfterFilter nextFilter model =
+    { model
+        | filter = nextFilter
+        , page = 0
+    }
+
+
+tupleAfterFilter : Model -> Filter -> ( Model, Cmd Msg )
+tupleAfterFilter model filter =
+    ( modelAfterFilter filter model
+    , commandAfterFilter filter model
+    )
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -265,28 +294,12 @@ update msg model =
                     )
 
         AddFilter tag ->
-            let
-                nextFilter =
-                    addToListIfMissing tag model.filter
-            in
-            ( { model
-                | filter = nextFilter
-              }
-              -- TODO: Only load if the filter changed.
-            , loadNotes model.page model.pageSize nextFilter
-            )
+            tupleAfterFilter model
+                (addToListIfMissing tag model.filter)
 
         RemoveFilter tag ->
-            let
-                nextFilter =
-                    List.filter (notValue tag) model.filter
-            in
-            ( { model
-                | filter = nextFilter
-              }
-              -- TODO: Only load if the filter changed.
-            , loadNotes model.page model.pageSize nextFilter
-            )
+            tupleAfterFilter model
+                (List.filter (notValue tag) model.filter)
 
 
 clickableTag : Msg -> Tag -> Html Msg
