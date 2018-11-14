@@ -44,6 +44,8 @@ type alias Model =
     , pageSize : Int
     , lastPage : Int
     , filter : Filter
+    , newNote : Maybe Note
+    , addingNewNote : Bool
     }
 
 
@@ -53,6 +55,7 @@ type Msg
     | SetPageSize (Maybe Int)
     | AddFilter Tag
     | RemoveFilter Tag
+    | ToggleAddNote Bool
 
 
 textDecoder : D.Decoder String
@@ -126,6 +129,8 @@ init _ =
       , pageSize = 13
       , lastPage = 0
       , filter = []
+      , newNote = Nothing
+      , addingNewNote = False
       }
     , loadNotes 0 8 []
     )
@@ -301,6 +306,11 @@ update msg model =
             tupleAfterFilter model
                 (List.filter (notValue tag) model.filter)
 
+        ToggleAddNote addingNewNote ->
+            ( { model | addingNewNote = addingNewNote }
+            , Cmd.none
+            )
+
 
 clickableTag : Msg -> Tag -> Html Msg
 clickableTag msg tag =
@@ -411,13 +421,13 @@ viewLoaded notes =
         )
 
 
-loadingView : Html Msg
-loadingView =
+viewLoading : Html Msg
+viewLoading =
     div [] [ text "loading..." ]
 
 
-loadFailedView : String -> Html Msg
-loadFailedView error =
+viewLoadFailed : String -> Html Msg
+viewLoadFailed error =
     pre [] [ text error ]
 
 
@@ -429,17 +439,34 @@ viewFilter filter =
         ]
 
 
+viewAddingNote : Model -> Html Msg
+viewAddingNote model =
+    div [] [ text "x" ]
+
+
+viewTools : Model -> Html Msg
+viewTools model =
+    div []
+        [ button [ onClick (ToggleAddNote (not model.addingNewNote)) ] [ text "toggle" ]
+        , if model.addingNewNote then
+            viewAddingNote model
+
+          else
+            viewFilter model.filter
+        ]
+
+
 view : Model -> Html Msg
 view model =
     div []
-        [ viewFilter model.filter
+        [ viewTools model
         , pagingView model
         , case model.loadingState of
             Failed error ->
-                loadFailedView error
+                viewLoadFailed error
 
             Loading ->
-                loadingView
+                viewLoading
 
             Loaded ->
                 viewLoaded model.notes
