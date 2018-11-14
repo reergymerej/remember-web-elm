@@ -23,6 +23,10 @@ type alias Note =
     }
 
 
+type alias NewNote =
+    String
+
+
 type alias NotesResponse =
     { data : List Note
     , limit : Int
@@ -44,7 +48,7 @@ type alias Model =
     , pageSize : Int
     , lastPage : Int
     , filter : Filter
-    , newNote : Maybe Note
+    , newNote : NewNote
     , addingNewNote : Bool
     }
 
@@ -56,6 +60,8 @@ type Msg
     | AddFilter Tag
     | RemoveFilter Tag
     | ToggleAddNote Bool
+    | ChangeNewNote String
+    | SaveNewNote
 
 
 textDecoder : D.Decoder String
@@ -129,8 +135,8 @@ init _ =
       , pageSize = 13
       , lastPage = 0
       , filter = []
-      , newNote = Nothing
-      , addingNewNote = False
+      , newNote = ""
+      , addingNewNote = True
       }
     , loadNotes 0 8 []
     )
@@ -307,9 +313,13 @@ update msg model =
                 (List.filter (notValue tag) model.filter)
 
         ToggleAddNote addingNewNote ->
-            ( { model | addingNewNote = addingNewNote }
-            , Cmd.none
-            )
+            ( { model | addingNewNote = addingNewNote }, Cmd.none )
+
+        ChangeNewNote newNote ->
+            ( { model | newNote = newNote }, Cmd.none )
+
+        SaveNewNote ->
+            ( { model | newNote = String.trim model.newNote }, Cmd.none )
 
 
 clickableTag : Msg -> Tag -> Html Msg
@@ -441,7 +451,19 @@ viewFilter filter =
 
 viewAddingNote : Model -> Html Msg
 viewAddingNote model =
-    div [] [ text "x" ]
+    div []
+        [ input
+            [ Html.Attributes.placeholder "Add a Note"
+            , onInput ChangeNewNote
+            ]
+            []
+        , button [ onClick (ToggleAddNote False) ] [ text "Cancel" ]
+        , button
+            [ Html.Attributes.disabled (String.trim model.newNote == "")
+            , onClick SaveNewNote
+            ]
+            [ text "Save" ]
+        ]
 
 
 viewTools : Model -> Html Msg
