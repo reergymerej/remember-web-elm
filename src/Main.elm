@@ -6,6 +6,7 @@ import Html.Attributes
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode as D
+import Json.Encode as E
 import Url.Builder
 
 
@@ -69,7 +70,7 @@ type Msg
     | ToggleAddNote Bool
     | ChangeNewNote String
     | SaveNewNote
-    | SaveNoteDone (Result Http.Error NotesResponse)
+    | SaveNoteDone (Result Http.Error Note)
 
 
 textDecoder : D.Decoder String
@@ -96,6 +97,11 @@ notesResponseDecoder =
         (D.field "limit" D.int)
         (D.field "skip" D.int)
         (D.field "total" D.int)
+
+
+saveNoteResponseDecoder : D.Decoder Note
+saveNoteResponseDecoder =
+    noteDecoder
 
 
 filterQueryList : Filter -> List Url.Builder.QueryParameter
@@ -132,7 +138,11 @@ urlForNotes page pageSize filter =
 
 loadNotes : Int -> Int -> Filter -> Cmd Msg
 loadNotes page pageSize filter =
-    Http.send LoadNotesDone (Http.get (urlForNotes page pageSize filter) notesResponseDecoder)
+    Http.send LoadNotesDone
+        (Http.get
+            (urlForNotes page pageSize filter)
+            notesResponseDecoder
+        )
 
 
 saveNote : NewNote -> Cmd Msg
@@ -143,9 +153,15 @@ saveNote newNote =
                 "https://jex-forget-me-not.herokuapp.com"
                 [ "note" ]
                 []
+
+        encodedBody =
+            E.object [ ( "text", E.string newNote ) ]
+
+        body =
+            Http.jsonBody encodedBody
     in
     Http.send SaveNoteDone
-        (Http.post url Http.emptyBody notesResponseDecoder)
+        (Http.post url body noteDecoder)
 
 
 init : () -> ( Model, Cmd Msg )
