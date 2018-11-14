@@ -41,6 +41,12 @@ type LoadingState
     | Failed String
 
 
+type SavingNoteState
+    = DoneSavingNote
+    | SavingNote
+    | FailedSavingNote String
+
+
 type alias Model =
     { notes : List Note
     , loadingState : LoadingState
@@ -50,6 +56,7 @@ type alias Model =
     , filter : Filter
     , newNote : NewNote
     , addingNewNote : Bool
+    , savingNoteState : SavingNoteState
     }
 
 
@@ -137,6 +144,7 @@ init _ =
       , filter = []
       , newNote = ""
       , addingNewNote = True
+      , savingNoteState = DoneSavingNote
       }
     , loadNotes 0 8 []
     )
@@ -319,7 +327,12 @@ update msg model =
             ( { model | newNote = newNote }, Cmd.none )
 
         SaveNewNote ->
-            ( { model | newNote = String.trim model.newNote }, Cmd.none )
+            ( { model
+                | newNote = String.trim model.newNote
+                , savingNoteState = SavingNote
+              }
+            , loadNotes 0 3 []
+            )
 
 
 clickableTag : Msg -> Tag -> Html Msg
@@ -449,17 +462,27 @@ viewFilter filter =
         ]
 
 
+noteIsValid : Model -> Bool
+noteIsValid model =
+    String.trim model.newNote == ""
+
+
 viewAddingNote : Model -> Html Msg
 viewAddingNote model =
+    let
+        disable =
+            model.savingNoteState == SavingNote
+    in
     div []
         [ input
             [ Html.Attributes.placeholder "Add a Note"
+            , Html.Attributes.disabled disable
             , onInput ChangeNewNote
             ]
             []
         , button [ onClick (ToggleAddNote False) ] [ text "Cancel" ]
         , button
-            [ Html.Attributes.disabled (String.trim model.newNote == "")
+            [ Html.Attributes.disabled (disable || noteIsValid model == True)
             , onClick SaveNewNote
             ]
             [ text "Save" ]
