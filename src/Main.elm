@@ -144,7 +144,7 @@ init _ =
       , filter = []
       , newNote = ""
       , addingNewNote = True
-      , savingNoteState = DoneSavingNote
+      , savingNoteState = FailedSavingNote "I don't know what happened!"
       }
     , loadNotes 0 8 []
     )
@@ -469,24 +469,50 @@ noteIsValid model =
 
 viewAddingNote : Model -> Html Msg
 viewAddingNote model =
-    let
-        disable =
-            model.savingNoteState == SavingNote
-    in
-    div []
-        [ input
-            [ Html.Attributes.placeholder "Add a Note"
-            , Html.Attributes.disabled disable
-            , onInput ChangeNewNote
-            ]
-            []
-        , button [ onClick (ToggleAddNote False) ] [ text "Cancel" ]
-        , button
-            [ Html.Attributes.disabled (disable || noteIsValid model == True)
-            , onClick SaveNewNote
-            ]
-            [ text "Save" ]
-        ]
+    case model.savingNoteState of
+        DoneSavingNote ->
+            div []
+                [ input
+                    [ Html.Attributes.placeholder "Add a Note"
+                    , onInput ChangeNewNote
+                    ]
+                    []
+                , button [ onClick (ToggleAddNote False) ] [ text "Cancel" ]
+                , button
+                    [ Html.Attributes.disabled (noteIsValid model == True)
+                    , onClick SaveNewNote
+                    ]
+                    [ text "Save" ]
+                ]
+
+        SavingNote ->
+            div []
+                [ input
+                    [ Html.Attributes.disabled True
+                    , onInput ChangeNewNote
+                    ]
+                    []
+                , button [ onClick (ToggleAddNote False) ] [ text "Cancel" ]
+                , button
+                    [ Html.Attributes.disabled True ]
+                    [ text "Saving..." ]
+                ]
+
+        FailedSavingNote error ->
+            div []
+                [ input
+                    [ Html.Attributes.placeholder "Add a Note"
+                    , onInput ChangeNewNote
+                    ]
+                    []
+                , button [ onClick (ToggleAddNote False) ] [ text "Cancel" ]
+                , button
+                    [ Html.Attributes.disabled (noteIsValid model == True)
+                    , onClick SaveNewNote
+                    ]
+                    [ text "Try Again" ]
+                , div [] [ text error ]
+                ]
 
 
 viewTools : Model -> Html Msg
