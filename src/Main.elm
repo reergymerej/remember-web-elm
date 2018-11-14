@@ -366,16 +366,18 @@ update msg model =
 
         SaveNoteDone result ->
             case result of
-                Ok _ ->
+                Err error ->
                     ( { model
-                        | savingNoteState = DoneSavingNote
+                        | savingNoteState = FailedSavingNote (getStringFromHttpError error)
                       }
                     , Cmd.none
                     )
 
-                Err error ->
+                Ok note ->
                     ( { model
-                        | savingNoteState = FailedSavingNote (getStringFromHttpError error)
+                        | savingNoteState = DoneSavingNote
+                        , notes = note :: model.notes
+                        , newNote = ""
                       }
                     , Cmd.none
                     )
@@ -520,6 +522,7 @@ viewAddingNote model =
             div []
                 [ input
                     [ Html.Attributes.placeholder "Add a Note"
+                    , Html.Attributes.value model.newNote
                     , onInput ChangeNewNote
                     ]
                     []
