@@ -69,6 +69,7 @@ type Msg
     | ToggleAddNote Bool
     | ChangeNewNote String
     | SaveNewNote
+    | SaveNoteDone (Result Http.Error NotesResponse)
 
 
 textDecoder : D.Decoder String
@@ -134,6 +135,19 @@ loadNotes page pageSize filter =
     Http.send LoadNotesDone (Http.get (urlForNotes page pageSize filter) notesResponseDecoder)
 
 
+saveNote : NewNote -> Cmd Msg
+saveNote newNote =
+    let
+        url =
+            Url.Builder.crossOrigin
+                "https://jex-forget-me-not.herokuapp.com"
+                [ "note" ]
+                []
+    in
+    Http.send SaveNoteDone
+        (Http.post url Http.emptyBody notesResponseDecoder)
+
+
 init : () -> ( Model, Cmd Msg )
 init _ =
     ( { notes = []
@@ -144,7 +158,7 @@ init _ =
       , filter = []
       , newNote = ""
       , addingNewNote = True
-      , savingNoteState = FailedSavingNote "I don't know what happened!"
+      , savingNoteState = DoneSavingNote
       }
     , loadNotes 0 8 []
     )
@@ -303,11 +317,7 @@ update msg model =
 
                 Err error ->
                     ( { model
-                        | loadingState =
-                            Failed
-                                (getStringFromHttpError
-                                    error
-                                )
+                        | loadingState = Failed (getStringFromHttpError error)
                       }
                     , Cmd.none
                     )
@@ -327,12 +337,32 @@ update msg model =
             ( { model | newNote = newNote }, Cmd.none )
 
         SaveNewNote ->
+            let
+                newNote =
+                    String.trim model.newNote
+            in
             ( { model
-                | newNote = String.trim model.newNote
+                | newNote = newNote
                 , savingNoteState = SavingNote
               }
-            , loadNotes 0 3 []
+            , saveNote newNote
             )
+
+        SaveNoteDone result ->
+            case result of
+                Ok _ ->
+                    ( { model
+                        | savingNoteState = DoneSavingNote
+                      }
+                    , Cmd.none
+                    )
+
+                Err error ->
+                    ( { model
+                        | savingNoteState = FailedSavingNote (getStringFromHttpError error)
+                      }
+                    , Cmd.none
+                    )
 
 
 clickableTag : Msg -> Tag -> Html Msg
