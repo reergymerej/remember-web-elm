@@ -166,17 +166,24 @@ saveNote newNote =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
+    let
+        pageSize =
+            13
+
+        page =
+            0
+    in
     ( { notes = []
       , loadingState = Loaded
-      , page = 0
-      , pageSize = 13
+      , page = page
+      , pageSize = pageSize
       , lastPage = 0
       , filter = []
       , newNote = ""
       , addingNewNote = True
       , savingNoteState = DoneSavingNote
       }
-    , loadNotes 0 8 []
+    , loadNotes page pageSize []
     )
 
 
@@ -439,8 +446,8 @@ pageViewStates disabled page lastPage =
     }
 
 
-pagingView : Model -> Html Msg
-pagingView model =
+viewPaging : Model -> Html Msg
+viewPaging model =
     let
         { page, lastPage } =
             model
@@ -580,7 +587,7 @@ view : Model -> Html Msg
 view model =
     div []
         [ viewTools model
-        , pagingView model
+        , viewPaging model
         , case model.loadingState of
             Failed error ->
                 viewLoadFailed error
